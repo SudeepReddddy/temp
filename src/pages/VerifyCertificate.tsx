@@ -35,39 +35,49 @@ const VerifyCertificate = () => {
 
     try {
       const trimmedCertId = certificateId.trim();
+      console.log('Verifying certificate:', trimmedCertId);
       
       if (!isValidCertificateId(trimmedCertId) && !trimmedCertId.startsWith('CERT-')) {
         throw new Error('Invalid certificate ID format. Please check and try again.');
       }
 
+      console.log('Searching database for certificate...');
       const { data, error: searchError } = await supabase
         .from('certificates')
         .select('*')
         .eq('certificate_id', trimmedCertId);
 
       if (searchError) throw searchError;
+      
+      console.log('Database search result:', data);
 
       if (data && data.length > 0) {
         setCertificate(data[0]);
+        console.log('Certificate found in database:', data[0]);
         
         try {
+          console.log('Checking blockchain verification...');
           if (!isWeb3Initialized()) {
             await initWeb3();
           }
           
           const blockchainCertificate = await verifyCertificateOnBlockchain(trimmedCertId);
+          console.log('Blockchain verification result:', blockchainCertificate);
           
           if (blockchainCertificate) {
             setBlockchainVerified(true);
             setBlockchainData(blockchainCertificate);
+            console.log('Certificate verified on blockchain');
           } else {
             setBlockchainVerified(false);
+            console.log('Certificate not found on blockchain');
           }
         } catch (blockchainError) {
           console.error('Blockchain verification error:', blockchainError);
           setBlockchainVerified(false);
         }
       } else {
+        console.log('Certificate not found in database');
         setError('Certificate not found. Please check the ID and try again.');
       }
     } catch (err: any) {

@@ -9,8 +9,9 @@ interface Student {
   student_name: string;
   student_email: string;
   created_at: string;
-  university?: {
+  universities?: {
     name: string;
+    address?: string;
   };
 }
 
@@ -57,26 +58,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...');
+        
         // Check for student session first
         const studentData = localStorage.getItem('student_session');
         if (studentData && mounted) {
           try {
             const parsedStudent = JSON.parse(studentData);
+            console.log('Found student session:', parsedStudent);
             setStudent(parsedStudent);
             setRole('student');
             setLoading(false);
             return;
           } catch (err) {
+            console.error('Error parsing student session:', err);
             localStorage.removeItem('student_session');
           }
         }
 
         // Get Supabase session
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('Supabase session:', session);
         
         if (session?.user && mounted) {
           setUser(session.user);
           await loadUserProfile(session.user);
+        } else {
+          console.log('No active session found');
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -93,21 +101,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
+        
+        console.log('Auth state changed:', event, session);
 
         if (event === 'SIGNED_OUT' || !session) {
+          console.log('User signed out or no session');
           setUser(null);
           setUniversity(null);
+          setRole(null);
           if (event === 'SIGNED_OUT') {
             setStudent(null);
-            setRole(null);
             localStorage.removeItem('student_session');
           }
         } else if (session?.user) {
+          console.log('User signed in:', session.user);
           setUser(session.user);
           await loadUserProfile(session.user);
         }
         
-        if (!student) {
+        if (!student && event !== 'SIGNED_OUT') {
           setLoading(false);
         }
       }
@@ -117,21 +129,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [student]);
 
   const loadUserProfile = async (user: User) => {
     try {
+      console.log('Loading user profile for:', user.id);
+      
       const { data: universityData } = await supabase
         .from('universities')
         .select('*')
         .eq('id', user.id)
         .maybeSingle();
 
+      console.log('University data:', universityData);
+
       if (universityData) {
         setUniversity(universityData);
         setRole('university');
         setStudent(null);
         localStorage.removeItem('student_session');
+        console.log('Set role to university');
+      } else {
+        console.log('No university profile found for user');
       }
     } catch (error) {
       console.error('Error in loadUserProfile:', error);
@@ -140,6 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signUpAsUniversity = async ({ name, email, password }: { name: string; email: string; password: string }) => {
     try {
+      console.log('Signing up university:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -164,6 +185,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (profileError) {
           throw profileError;
         }
+        
+        console.log('University signup successful');
       }
     } catch (error) {
       console.error('University signup error:', error);
@@ -174,6 +197,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const loginAsUniversity = async ({ email, password }: { email: string; password: string }) => {
     try {
       console.log('University login attempt:', email);
+      
+      // Clear any existing student session
+      localStorage.removeItem('student_session');
+      setStudent(null);
       
       // First, sign in with Supabase
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -213,13 +240,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('University login successful:', universityData);
 
-      // Clear any student session
-      localStorage.removeItem('student_session');
-      
       // Set university state
       setUser(authData.user);
       setUniversity(universityData);
-      setStudent(null);
       setRole('university');
       
     } catch (error) {
@@ -234,6 +257,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Clear any existing sessions
       localStorage.removeItem('student_session');
+      setStudent(null);
+      setUser(null);
+      setUniversity(null);
+      setRole(null);
+      
       if (user) {
         await supabase.auth.signOut();
       }
@@ -268,10 +296,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Store student session
       localStorage.setItem('student_session', JSON.stringify(studentData));
       
-      // Clear university state
-      setUser(null);
-      setUniversity(null);
-      
       // Set student state
       setStudent(studentData);
       setRole('student');
@@ -285,6 +309,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signOut = async () => {
     try {
       console.log('Signing out...');
+      
+      setLoading(true);
       
       // Clear student session
       localStorage.removeItem('student_session');
@@ -303,6 +329,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Sign out complete');
     } catch (error) {
       console.error('Error in signOut:', error);
+    } finally {
+      setLoading(false);
     }
   };
 

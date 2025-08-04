@@ -16,9 +16,12 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
+    console.log('Login page - checking auth state:', { role, user: !!user, student: !!student });
     if (role === 'university' && user) {
+      console.log('Redirecting to university dashboard');
       navigate('/university/dashboard');
     } else if (role === 'student' && student) {
+      console.log('Redirecting to student dashboard');
       navigate('/student/dashboard');
     }
   }, [role, user, student, navigate]);
@@ -51,12 +54,12 @@ const Login = () => {
         console.log('Attempting university login...');
         await loginAsUniversity({ email: email.trim(), password });
         console.log('University login successful, navigating...');
-        navigate('/university/dashboard');
+        // Navigation will be handled by the useEffect above
       } else {
         console.log('Attempting student login...');
         await loginAsStudent({ email: email.trim(), rollNumber: rollNumber.trim() });
         console.log('Student login successful, navigating...');
-        navigate('/student/dashboard');
+        // Navigation will be handled by the useEffect above
       }
     } catch (err: any) {
       console.error('Login error:', err);

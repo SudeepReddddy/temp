@@ -14,13 +14,19 @@ const StudentDashboard = () => {
         if (!student) return;
         setLoading(true);
         try {
+            console.log('Fetching certificates for student:', student.id);
             const { data, error } = await supabase
                 .from('certificates')
                 .select('*')
                 .eq('student_id_ref', student.id)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error fetching certificates:', error);
+                throw error;
+            }
+            
+            console.log('Fetched certificates:', data);
             setCertificates(data || []);
         } catch (error) {
             console.error('Error fetching certificates:', error);
@@ -72,7 +78,7 @@ const StudentDashboard = () => {
                                     Welcome, {student?.student_name}
                                 </h1>
                                 <p className="text-gray-600 text-lg">
-                                    {student?.university?.name || 'Your University'}
+                                    {student?.universities?.name || 'Your University'}
                                 </p>
                             </div>
                         </div>

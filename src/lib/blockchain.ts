@@ -357,8 +357,12 @@ export const verifyCertificateOnBlockchain = async (certificateId: string): Prom
     if (!contract) throw new Error('Failed to initialize Web3 for verification.');
   }
   try {
+    console.log('Verifying certificate on blockchain:', certificateId);
     const certificateData = await contract.certificates(certificateId);
+    console.log('Blockchain certificate data:', certificateData);
+    
     if (!certificateData || !certificateData.exists) return null;
+    
     return {
       certificateId: certificateData.certificateId,
       studentId: certificateData.studentId,
